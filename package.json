@@ -2,7 +2,7 @@
   "name": "@natcore/zap",
   "version": "1.0.0",
   "description": "Zod + server actions FTW",
-  "main": "index.js",
+  "main": "src/zap.js",
   "scripts": {
     "test": "jest"
   },
