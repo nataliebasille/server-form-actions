@@ -1,35 +1,57 @@
-import { z } from 'zod';
+import {
+  z,
+  type ZodObject,
+  type ZodString,
+  type ZodNumber,
+  type ZodBoolean,
+  type ZodDate,
+  type ZodBigInt,
+  type ZodUndefined,
+  type ZodNull,
+  type ZodEffects,
+  type ZodType,
+  type infer as Infer,
+  type SafeParseError,
+} from 'zod';
 
-/**
- * @typedef { z.ZodString | z.ZodNumber | z.ZodBoolean | z.ZodDate | z.ZodBigInt | z.ZodUndefined | z.ZodNull} ZodPrimitive
- */
+type ZodPrimitive =
+  | ZodString
+  | ZodNumber
+  | ZodBoolean
+  | ZodDate
+  | ZodBigInt
+  | ZodUndefined
+  | ZodNull;
 
-/**
- * @template {z.ZodObject | z.ZodEffects} TSchema
- * @typedef { (data: FormData | z.infer<TSchema>) => Promise<void> } ZapServerAction<TSchema>
- */
+export type ZapServerAction<
+  TSchema extends ZodObject<any> | ZodEffects<any>,
+  TReturn = void
+> = (data: FormData | Infer<TSchema>) => Promise<TReturn>;
+type ZapResult<
+  TSchema extends ZodObject<any> | ZodEffects<any>,
+  TReturn = void
+> = ZapServerAction<TSchema, TReturn> & {
+  valid: <TNextReturn = void>(
+    fn: (data: Infer<TSchema>) => Promise<TNextReturn>
+  ) => ZapResult<TSchema, TNextReturn>;
+  invalid: (
+    fn: (errors: z.ZodError) => Promise<void>
+  ) => ZapResult<TSchema, TReturn>;
+};
 
-/**
- * @template {z.ZodObject | z.ZodEffects} TSchema
- * @typedef { ZapServerAction<TSchema> & { valid: (fn: (data: z.infer<TSchema>) => Promise<void>) => ZapResult<TSchema>, invalid: (fn: (errors: z.ZodError) => Promise<void>) => ZapResult<TSchema> } } ZapResult<TSchema>
- */
-
-/**
- * @template {z.ZodObject | z.ZodEffects} TSchema
- * @param {TSchema} schema
- * @returns {ZapResult<TSchema>}
- */
-export function zap(schema) {
+export function zap<TSchema extends ZodObject<any> | ZodEffects<any>>(
+  schema: TSchema
+): ZapResult<TSchema, Infer<TSchema>> {
   let valid = undefined;
   let invalid = undefined;
-  const action = async (data) => {
-    data  = data instanceof FormData
-    ? formDataToObject(data, schema)
-    : data;
+  const action = async (data: FormData | Infer<TSchema>) => {
+    data = data instanceof FormData ? formDataToObject(data, schema) : data;
 
     const result = schema.safeParse(data);
 
-    return await (result.success ? valid?.(result.data) : invalid?.(result.error));
+    return await (result.success
+      ? valid?.(result.data)
+      : invalid?.((result as SafeParseError<any>).error));
   };
 
   action.valid = (fn) => {
@@ -45,12 +67,11 @@ export function zap(schema) {
   return action;
 }
 
-/**
- * @param {FormData} formData
- * @param {z.ZodObject | z.ZodEffects} schema
- * @returns {*}
- */
-function formDataToObject(formData, schema, namePrefix = '') {
+function formDataToObject(
+  formData: FormData,
+  schema: ZodObject<any> | ZodEffects<any>,
+  namePrefix: string = ''
+) {
   const shape = getSchemaShape(schema);
   const obj = {};
   for (const [property, propertySchema] of Object.entries(shape)) {
@@ -81,25 +102,21 @@ function formDataToObject(formData, schema, namePrefix = '') {
   return obj;
 }
 
-/**
- *
- * @param {z.ZodObject | z.ZodEffects} schema
- * @returns {{ [key: string]: z.ZodTypeAny } }}
- */
-function getSchemaShape(schema) {
+function getSchemaShape(schema: ZodObject<any> | ZodEffects<any>): {
+  [key: string]: z.ZodTypeAny;
+} {
   if (schema instanceof z.ZodEffects) {
     return getSchemaShape(schema._def.schema);
   }
+
   return schema.shape;
 }
 
-/**
- *
- * @param {string} value
- * @param {z.ZodType} schema
- * @returns
- */
-function transformPrimitive(value, schema) {
+function transformPrimitive(value: string | File, schema: ZodType) {
+  if (value instanceof File) {
+    throw new Error('File upload not supported yet');
+  }
+
   return schema instanceof z.ZodNumber
     ? Number(value)
     : schema instanceof z.ZodBoolean
@@ -116,12 +133,7 @@ function transformPrimitive(value, schema) {
     : value;
 }
 
-/**
- *
- * @param {z.ZodType} schema
- * @returns {schema is ZodPrimitive}
- */
-function isPrimitive(schema) {
+function isPrimitive(schema: ZodType): schema is ZodPrimitive {
   return (
     schema instanceof z.ZodString ||
     schema instanceof z.ZodNumber ||
@@ -133,13 +145,11 @@ function isPrimitive(schema) {
   );
 }
 
-/**
- *
- * @param {FormData} formData
- * @param {z.ZodObject} elementSchema
- * @param {string} name
- */
-function keyBased_formDataForArrayOfObjects(formData, elementSchema, name) {
+function keyBased_formDataForArrayOfObjects(
+  formData: FormData,
+  elementSchema: ZodObject<any>,
+  name: string
+) {
   const keys = formData.getAll(`${name}.key`);
   const obj = [];
   for (const key of keys) {
@@ -149,13 +159,11 @@ function keyBased_formDataForArrayOfObjects(formData, elementSchema, name) {
   return obj;
 }
 
-/**
- *
- * @param {FormData} formData
- * @param {z.ZodObject} elementSchema
- * @param {string} name
- */
-function indexBased_formDataForArrayOfObjects(formData, elementSchema, name) {
+function indexBased_formDataForArrayOfObjects(
+  formData: FormData,
+  elementSchema: ZodObject<any>,
+  name: string
+) {
   const obj = [];
   const shape = getSchemaShape(elementSchema);
   let index = 0;

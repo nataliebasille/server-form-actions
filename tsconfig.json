@@ -4,6 +4,7 @@
         "declaration": true,
         "emitDeclarationOnly": true,
         "declarationMap": true,
+        "jsx": "preserve"
     },
     "include": [
         "./src/**/*",

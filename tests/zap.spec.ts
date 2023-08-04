@@ -296,7 +296,6 @@ describe('test', () => {
           const invalid = jest.fn();
 
           const zapper = zap(schema).valid(valid).invalid(invalid);
-
           zapper(formData);
 
           expect(valid).toHaveBeenCalledWith({
