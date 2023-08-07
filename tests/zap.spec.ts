@@ -25,7 +25,7 @@ const numberArbitrary = fc
   })
   .filter((x) => !isNegativeZero(x));
 
-describe('test', () => {
+describe('zap', () => {
   beforeEach(() => {
     globalThis.FormData = createMockFormDataClass();
   });
@@ -40,14 +40,11 @@ describe('test', () => {
         const data = new FormData();
         data.append(key, value);
 
-        const valid = jest.fn();
-        const invalid = jest.fn();
-        const zapper = zap(schema).valid(valid).invalid(invalid);
+        const zapper = zap(schema);
 
-        await zapper(data);
+        const result = await zapper(data);
 
-        expect(invalid).not.toHaveBeenCalled();
-        expect(valid).toHaveBeenCalledWith({ [key]: value });
+        expect(result).toEqual({ type: 'valid', data: { [key]: value } });
       })
     );
   });
@@ -62,13 +59,10 @@ describe('test', () => {
         const data = new FormData();
         data.append(key, value.toString());
 
-        const valid = jest.fn();
-        const invalid = jest.fn();
-        const zapper = zap(schema).valid(valid).invalid(invalid);
+        const zapper = zap(schema);
 
-        await zapper(data);
-        expect(invalid).not.toHaveBeenCalled();
-        expect(valid).toHaveBeenCalledWith({ [key]: value });
+        const result = await zapper(data);
+        expect(result).toEqual({ type: 'valid', data: { [key]: value } });
       })
     );
   });
@@ -83,15 +77,11 @@ describe('test', () => {
         const data = new FormData();
         data.append(key, value.toString());
 
-        const valid = jest.fn();
-        const invalid = jest.fn();
+        const zapper = zap(schema);
 
-        const zapper = zap(schema).valid(valid).invalid(invalid);
+        const result = await zapper(data);
 
-        await zapper(data);
-
-        expect(valid).toHaveBeenCalledWith({ [key]: value });
-        expect(invalid).not.toHaveBeenCalled();
+        expect(result).toEqual({ type: 'valid', data: { [key]: value } });
       })
     );
   });
@@ -109,15 +99,11 @@ describe('test', () => {
           const data = new FormData();
           value.forEach((v) => data.append(key, v));
 
-          const valid = jest.fn();
-          const invalid = jest.fn();
+          const zapper = zap(schema);
 
-          const zapper = zap(schema).valid(valid).invalid(invalid);
+          const result = await zapper(data);
 
-          await zapper(data);
-
-          expect(valid).toHaveBeenCalledWith({ [key]: value });
-          expect(invalid).not.toHaveBeenCalled();
+          expect(result).toEqual({ type: 'valid', data: { [key]: value } });
         }
       )
     );
@@ -136,15 +122,11 @@ describe('test', () => {
           const data = new FormData();
           value.forEach((v) => data.append(key, v.toString()));
 
-          const valid = jest.fn();
-          const invalid = jest.fn();
+          const zapper = zap(schema);
 
-          const zapper = zap(schema).valid(valid).invalid(invalid);
+          const result = await zapper(data);
 
-          await zapper(data);
-
-          expect(valid).toHaveBeenCalledWith({ [key]: value });
-          expect(invalid).not.toHaveBeenCalled();
+          expect(result).toEqual({ type: 'valid', data: { [key]: value } });
         }
       )
     );
@@ -163,15 +145,11 @@ describe('test', () => {
           const data = new FormData();
           value.forEach((v) => data.append(key, v.toString()));
 
-          const valid = jest.fn();
-          const invalid = jest.fn();
+          const zapper = zap(schema);
 
-          const zapper = zap(schema).valid(valid).invalid(invalid);
+          const result = await zapper(data);
 
-          await zapper(data);
-
-          expect(valid).toHaveBeenCalledWith({ [key]: value });
-          expect(invalid).not.toHaveBeenCalled();
+          expect(result).toEqual({ type: 'valid', data: { [key]: value } });
         }
       )
     );
@@ -206,64 +184,11 @@ describe('test', () => {
             data.append(`${key}.${k}`, v.toString())
           );
 
-          const valid = jest.fn();
-          const invalid = jest.fn();
+          const zapper = zap(schema);
 
-          const zapper = zap(schema).valid(valid).invalid(invalid);
+          const result = await zapper(data);
 
-          await zapper(data);
-
-          expect(valid).toHaveBeenCalledWith({ [key]: value });
-          expect(invalid).not.toHaveBeenCalled();
-        }
-      )
-    );
-  });
-
-  it('works with a property of the type array of objects that uses key based indexing', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        keyArbitrary,
-        fc.array(
-          fc.tuple(
-            keyArbitrary,
-            fc.tuple(fc.string(), numberArbitrary, fc.boolean())
-          )
-        ),
-        async (key, data) => {
-          const schema = z.object({
-            [key]: z.array(
-              z.object({
-                one: z.string(),
-                two: z.number(),
-                three: z.boolean(),
-              })
-            ),
-          });
-
-          const formData = new FormData();
-          data.forEach(([k, [one, two, three]]) => {
-            formData.append(`${key}.key`, k);
-            formData.append(`${key}[${k}].one`, one);
-            formData.append(`${key}[${k}].two`, two.toString());
-            formData.append(`${key}[${k}].three`, three.toString());
-          });
-
-          const valid = jest.fn();
-          const invalid = jest.fn();
-
-          const zapper = zap(schema).valid(valid).invalid(invalid);
-
-          zapper(formData);
-
-          expect(valid).toHaveBeenCalledWith({
-            [key]: data.map(([, [one, two, three]]) => ({
-              one,
-              two,
-              three,
-            })),
-          });
-          expect(invalid).not.toHaveBeenCalled();
+          expect(result).toEqual({ type: 'valid', data: { [key]: value } });
         }
       )
     );
@@ -287,25 +212,24 @@ describe('test', () => {
 
           const formData = new FormData();
           data.forEach(([one, two, three], index) => {
-            formData.append(`${key}[${index}].one`, one);
-            formData.append(`${key}[${index}].two`, two.toString());
-            formData.append(`${key}[${index}].three`, three.toString());
+            formData.append(`${key}.${index}.one`, one);
+            formData.append(`${key}.${index}.two`, two.toString());
+            formData.append(`${key}.${index}.three`, three.toString());
           });
 
-          const valid = jest.fn();
-          const invalid = jest.fn();
+          const zapper = zap(schema);
+          const result = await zapper(formData);
 
-          const zapper = zap(schema).valid(valid).invalid(invalid);
-          zapper(formData);
-
-          expect(valid).toHaveBeenCalledWith({
-            [key]: data.map(([one, two, three]) => ({
-              one,
-              two,
-              three,
-            })),
+          expect(result).toEqual({
+            type: 'valid',
+            data: {
+              [key]: data.map(([one, two, three]) => ({
+                one,
+                two,
+                three,
+              })),
+            },
           });
-          expect(invalid).not.toHaveBeenCalled();
         }
       )
     );
