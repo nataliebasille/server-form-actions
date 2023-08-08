@@ -13,6 +13,33 @@ import type {
   ZodUndefined,
 } from 'zod';
 
+export type TupleIndices<T extends readonly any[]> = Extract<
+  keyof T,
+  `${number}`
+> extends `${infer N extends number}`
+  ? N
+  : never;
+
+export type IsTuple<T> = T extends [any, ...any] ? true : false;
+
+export type NestedKeyOf<T> = IsTuple<T> extends true
+  ? {
+      [Key in TupleIndices<T extends readonly any[] ? T : never>]:
+        | `${Key}`
+        | `${Key}.${NestedKeyOf<
+            T extends readonly (infer ElementType)[] ? ElementType : never
+          >}`;
+    }[TupleIndices<T extends readonly any[] ? T : never>]
+  : T extends Array<infer ElementType>
+  ? `${number}` | `${number}.${NestedKeyOf<ElementType>}`
+  : T extends object
+  ? {
+      [Key in keyof T & (string | number)]: T[Key] extends object
+        ? `${Key}` | `${Key}.${NestedKeyOf<T[Key]>}`
+        : `${Key}`;
+    }[keyof T & (string | number)]
+  : never;
+
 export function getSchemaShape(schema: ZodObject<any> | ZodEffects<any>): {
   [key: string]: ZodTypeAny;
 } {

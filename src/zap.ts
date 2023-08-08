@@ -27,6 +27,7 @@ import {
   isZodUndefined,
 } from './helpers';
 import { type ZapFields, createZapFields } from './fields';
+import type { ZapError } from './errors';
 
 type ZodPrimitive =
   | ZodString
@@ -37,10 +38,6 @@ type ZodPrimitive =
   | ZodUndefined
   | ZodNull;
 
-type ZapError = {
-  [key: string]: string;
-};
-
 export type ZapResult<TSchema extends ZodObject<any> | ZodEffects<any>> =
   | {
       type: 'valid';
@@ -48,7 +45,7 @@ export type ZapResult<TSchema extends ZodObject<any> | ZodEffects<any>> =
     }
   | {
       type: 'invalid';
-      errors: ZapError;
+      errors: ZapError<TSchema>;
     };
 
 export type ZapServerAction<TSchema extends ZodObject<any> | ZodEffects<any>> =
@@ -76,7 +73,8 @@ export function zap<TSchema extends ZodObject<any> | ZodEffects<any>>(
         const { path, message } = error;
         const key = path.join('.');
 
-        return { ...acc, [key]: message };
+        acc[key] = message;
+        return acc;
       },
       {}
     );

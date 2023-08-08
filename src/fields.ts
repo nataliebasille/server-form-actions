@@ -1,27 +1,44 @@
-import type { ZodTypeAny, infer as Infer, ZodFirstPartySchemaTypes } from 'zod';
 import {
+  type ZodTypeAny,
+  type infer as Infer,
+  type ZodFirstPartySchemaTypes,
+} from 'zod';
+import {
+  type IsTuple,
+  type TupleIndices,
   getSchemaShape,
   isZodArray,
   isZodEffects,
   isZodObject,
 } from './helpers';
 
-export type ZapFields<
+type FieldsFromShape<
   TShape,
   BaseName extends string = '',
   Prefix extends string = BaseName extends '' ? '' : `${BaseName}.`
-> = BaseName &
-  (TShape extends any[]
-    ? {
-        [K in keyof TShape]: K extends number
-          ? ZapFields<TShape[K], `${Prefix}${K}`>
-          : never;
-      }
-    : TShape extends object
-    ? {
-        [K in keyof TShape]: ZapFields<TShape[K], `${Prefix}${K & string}`>;
-      }
-    : string);
+> = IsTuple<TShape> extends true
+  ? {
+      [K in TupleIndices<
+        TShape extends readonly any[] ? TShape : never
+      >]: FieldsFromShape<
+        TShape extends readonly (infer ElementType)[] ? ElementType : never,
+        `${Prefix}${K}`
+      >;
+    }
+  : TShape extends Array<infer ElementType>
+  ? FieldsFromShape<ElementType, `${Prefix}${number}`>[] & BaseName
+  : TShape extends object
+  ? {
+      [K in keyof TShape & (string | number)]: FieldsFromShape<
+        TShape[K],
+        `${Prefix}${K}`
+      >;
+    } & BaseName
+  : BaseName;
+
+export type ZapFields<TSchema extends ZodTypeAny> = FieldsFromShape<
+  Infer<TSchema>
+>;
 
 export function createZapFields<TSchema extends ZodFirstPartySchemaTypes>(
   schema: TSchema
