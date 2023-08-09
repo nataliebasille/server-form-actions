@@ -56,7 +56,7 @@ export type ZapServerAction<
   TResult extends Result<any, any> = ZapResult<TSchema>
 > = {
   (data: FormData | Infer<TSchema>): Promise<TResult>;
-  fields: ZapFields<Infer<TSchema>>;
+  fields: ZapFields<TSchema>;
 };
 
 export function zap<TSchema extends ZodObject<any> | ZodEffects<any>>(
