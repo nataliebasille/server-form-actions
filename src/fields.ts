@@ -43,7 +43,7 @@ export type ZapFields<TSchema extends ZodTypeAny> = FieldsFromShape<
 export function createZapFields<TSchema extends ZodFirstPartySchemaTypes>(
   schema: TSchema
 ) {
-  return createZapFieldsProxy(schema) as unknown as ZapFields<Infer<TSchema>>;
+  return createZapFieldsProxy(schema) as unknown as ZapFields<TSchema>;
 }
 
 function createZapFieldsProxy<

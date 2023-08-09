@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import { createZapFields } from '../src/fields';
+import { IsTuple, TupleIndices } from '../src/helpers';
 
 describe('zap fields', () => {
   it('gets field names for top level properties', () => {
@@ -51,8 +52,8 @@ describe('zap fields', () => {
         })
       ),
     });
-    const fields = createZapFields(schema);
 
+    const fields = createZapFields(schema);
     expect(fields.name.valueOf()).toEqual('name');
     expect(fields.age.valueOf()).toEqual('age');
     expect(fields.isCool.valueOf()).toEqual('isCool');

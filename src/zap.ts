@@ -38,48 +38,84 @@ type ZodPrimitive =
   | ZodUndefined
   | ZodNull;
 
-export type ZapResult<TSchema extends ZodObject<any> | ZodEffects<any>> =
+type Result<TValid, TInvalid> =
   | {
       type: 'valid';
-      data: Infer<TSchema>;
+      data: TValid;
     }
   | {
       type: 'invalid';
-      errors: ZapError<TSchema>;
+      errors: TInvalid;
     };
 
-export type ZapServerAction<TSchema extends ZodObject<any> | ZodEffects<any>> =
-  {
-    (data: FormData | Infer<TSchema>): Promise<ZapResult<TSchema>>;
-    fields: ZapFields<Infer<TSchema>>;
-  };
+export type ZapResult<TSchema extends ZodObject<any> | ZodEffects<any>> =
+  Result<Infer<TSchema>, ZapError<TSchema>>;
+
+export type ZapServerAction<
+  TSchema extends ZodObject<any> | ZodEffects<any>,
+  TResult extends Result<any, any> = ZapResult<TSchema>
+> = {
+  (data: FormData | Infer<TSchema>): Promise<TResult>;
+  fields: ZapFields<Infer<TSchema>>;
+};
 
 export function zap<TSchema extends ZodObject<any> | ZodEffects<any>>(
   schema: TSchema
-): ZapServerAction<TSchema> {
+): ZapServerAction<TSchema>;
+export function zap<TSchema extends ZodObject<any> | ZodEffects<any>, TResult>(
+  schema: TSchema,
+  whenValid: (data: Infer<TSchema>) => Promise<TResult>
+): ZapServerAction<TSchema, Result<TResult, ZapError<TSchema>>>;
+export function zap<
+  TSchema extends ZodObject<any> | ZodEffects<any>,
+  TResult,
+  TError
+>(
+  schema: TSchema,
+  when: {
+    valid?: (data: Infer<TSchema>) => Promise<TResult>;
+    invalid?: (errors: ZapError<TSchema>) => Promise<TError>;
+  }
+): ZapServerAction<TSchema, Result<TResult, TError>>;
+
+export function zap<TSchema extends ZodObject<any> | ZodEffects<any>>(
+  schema: TSchema,
+  when?:
+    | ((data: Infer<TSchema>) => Promise<any>)
+    | { valid?: any; invalid?: any }
+): ZapServerAction<TSchema, any> {
+  const whenValid = typeof when === 'function' ? when : when?.valid;
+  const whenInvalid = typeof when === 'object' ? when?.invalid : undefined;
   const action = async (
     data: FormData | Infer<TSchema>
   ): Promise<ZapResult<TSchema>> => {
     data = data instanceof FormData ? formDataToObject(data, schema) : data;
 
-    const result = schema.safeParse(data);
+    const parsedResult = schema.safeParse(data);
 
-    if (result.success) {
-      return { type: 'valid', data: result.data };
+    if (parsedResult.success) {
+      const result = whenValid ? await whenValid(data) : parsedResult.data;
+      return {
+        type: 'valid',
+        data: result === undefined ? parsedResult.data : result,
+      };
     }
 
-    const formErrors = (result as SafeParseError<any>).error.errors.reduce(
-      (acc, error) => {
-        const { path, message } = error;
-        const key = path.join('.');
+    const formErrors = (
+      parsedResult as SafeParseError<any>
+    ).error.errors.reduce((acc, error) => {
+      const { path, message } = error;
+      const key = path.join('.');
 
-        acc[key] = message;
-        return acc;
-      },
-      {}
-    );
+      acc[key] = message;
+      return acc;
+    }, {});
 
-    return { type: 'invalid', errors: formErrors };
+    const result = whenInvalid ? await whenInvalid(formErrors) : formErrors;
+    return {
+      type: 'invalid',
+      errors: result === undefined ? formErrors : result,
+    };
   };
 
   action.fields = createZapFields<TSchema>(schema);
