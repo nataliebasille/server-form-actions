@@ -1,6 +1,5 @@
 import * as z from 'zod';
 import { createZapFields } from '../src/fields';
-import { IsTuple, TupleIndices } from '../src/helpers';
 
 describe('zap fields', () => {
   it('gets field names for top level properties', () => {
@@ -10,9 +9,9 @@ describe('zap fields', () => {
       isCool: z.boolean(),
     });
     const fields = createZapFields(schema);
-    expect(fields.name.valueOf()).toEqual('name');
-    expect(fields.age.valueOf()).toEqual('age');
-    expect(fields.isCool.valueOf()).toEqual('isCool');
+    expect(fields('name')).toEqual('name');
+    expect(fields('age')).toEqual('age');
+    expect(fields('isCool')).toEqual('isCool');
   });
 
   it('gets field names for nested properties', () => {
@@ -28,14 +27,14 @@ describe('zap fields', () => {
       }),
     });
     const fields = createZapFields(schema);
-    expect(fields.name.valueOf()).toEqual('name');
-    expect(fields.age.valueOf()).toEqual('age');
-    expect(fields.isCool.valueOf()).toEqual('isCool');
-    expect(fields.address.valueOf()).toEqual('address');
-    expect(fields.address.street.valueOf()).toEqual('address.street');
-    expect(fields.address.city.valueOf()).toEqual('address.city');
-    expect(fields.address.state.valueOf()).toEqual('address.state');
-    expect(fields.address.zip.valueOf()).toEqual('address.zip');
+    expect(fields('name')).toEqual('name');
+    expect(fields('age')).toEqual('age');
+    expect(fields('isCool')).toEqual('isCool');
+    expect(fields('address')).toEqual('address');
+    expect(fields('address.street')).toEqual('address.street');
+    expect(fields('address.city')).toEqual('address.city');
+    expect(fields('address.state')).toEqual('address.state');
+    expect(fields('address.zip')).toEqual('address.zip');
   });
 
   it('gets field names for array properties', () => {
@@ -54,16 +53,16 @@ describe('zap fields', () => {
     });
 
     const fields = createZapFields(schema);
-    expect(fields.name.valueOf()).toEqual('name');
-    expect(fields.age.valueOf()).toEqual('age');
-    expect(fields.isCool.valueOf()).toEqual('isCool');
-    expect(fields.address[0].valueOf()).toEqual('address.0');
-    expect(fields.address[1].valueOf()).toEqual('address.1');
-    expect(fields.address[2].valueOf()).toEqual('address.2');
+    expect(fields('name')).toEqual('name');
+    expect(fields('age')).toEqual('age');
+    expect(fields('isCool')).toEqual('isCool');
+    expect(fields('address.0')).toEqual('address.0');
+    expect(fields('address.1')).toEqual('address.1');
+    expect(fields('address.2')).toEqual('address.2');
 
-    expect(fields.address[0].street.valueOf()).toEqual('address.0.street');
-    expect(fields.address[1].city.valueOf()).toEqual('address.1.city');
-    expect(fields.address[2].state.valueOf()).toEqual('address.2.state');
-    expect(fields.address[3].zip.valueOf()).toEqual('address.3.zip');
+    expect(fields('address.0.street')).toEqual('address.0.street');
+    expect(fields('address.1.city')).toEqual('address.1.city');
+    expect(fields('address.2.state')).toEqual('address.2.state');
+    expect(fields('address.3.zip')).toEqual('address.3.zip');
   });
 });

@@ -114,7 +114,8 @@ export function zap<TSchema extends ZodObject<any> | ZodEffects<any>>(
     const result = whenInvalid ? await whenInvalid(formErrors) : formErrors;
     return {
       type: 'invalid',
-      errors: result === undefined ? formErrors : result,
+      errors:
+        result === undefined ? (field) => (formErrors as any)[field] : result,
     };
   };
 
